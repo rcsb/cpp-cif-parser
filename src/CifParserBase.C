@@ -130,18 +130,7 @@ void CifParser::Parse(const string& fileName, string& diagnostics,
 
     OpenLog(logFileName, _verbose);
 
-    cifparser_in = cifIn;
-
-    int ret;
-
-    cifparser_restart(cifparser_in);
-
-    ret = cifparser_parse();
-    if (ret != 0)
-    {
-        int b = 0;
-        b++;
-    }
+    Parse(cifIn, diagnostics);
 
     fclose(cifIn);
 
@@ -154,10 +143,37 @@ void CifParser::Parse(const string& fileName, string& diagnostics,
     {
         log.close();
     }
+}
+
+void CifParser::Parse(FILE* cifIn, string &diagnostics,
+  const string& parseLogFileName)
+{
+    diagnostics.clear();
+
+    // The file-name overload opens its own parsing log before delegating
+    // here, so a log is opened only when this method is called directly and
+    // a log file name has been supplied.
+    const bool openedLog = !parseLogFileName.empty();
+
+    if (openedLog)
+    {
+        OpenLog(parseLogFileName, _verbose);
+    }
+
+    cifparser_in = cifIn;
+
+    cifparser_restart(cifparser_in);
+
+    cifparser_parse();
 
     if (this->errorLog.size() > 0)
     {
         diagnostics = this->errorLog;
+    }
+
+    if (openedLog)
+    {
+        log.close();
     }
 }
 
@@ -169,17 +185,9 @@ void CifParser::ParseString(const string& cifString, string& diagnostics)
     CIFPARSER__BUFFER_STATE bufferState =
       cifparser__scan_string(cifString.c_str());
 
-    int ret;
-
-    ret = cifparser_parse();
+    cifparser_parse();
 
     cifparser__delete_buffer(bufferState);
-
-    if (ret != 0)
-    {
-        int b = 0;
-        b++;
-    }
 
     if (this->errorLog.size() > 0)
     {
@@ -298,7 +306,7 @@ int CifParser::ProcessLoopDeclaration(void)
     _readDef.IncreaseNumReadCats();
   }
 
-  // If category aready exists, log the warning
+  // If category already exists, log the warning
   bool tablePresent = false;
 
   if (_fobj->IsBlockPresent(_curDataBlockName))
